@@ -1,0 +1,152 @@
+#                         R-value references
+---
+
+## `L-values and r-values`
+
+> Despite having the word “value” in their names, l-values and r-values are actually not properties of values, but rather, properties of expressions.
+
+
+> Every expression in C++ has two properties: a type (which is used for type checking), and a value category (which is used for certain kinds of syntax checking, such as whether the result of the expression can be assigned to). In C++03 and earlier, l-values and r-values were the only two value categories available.
+
+
+> It’s simplest to think of an **l-value** (also called a locator value) as a function or an object (or an expression that evaluates to a function or object). All l-values have assigned memory addresses. When l-values were originally defined, they were defined as “values that are suitable to be on the left-hand side of an assignment expression”. However, later, the const keyword was added to the language, and l-values were split into two sub-categories: modifiable l-values, which can be changed, and non-modifiable l-values, which are const.
+
+
+> It’s simplest to think of an **r-value** as “everything that is not an l-value”. This notably includes literals (e.g. 5), temporary values (e.g. x+1), and anonymous objects (e.g. Fraction(5, 2)). r-values are typically evaluated for their values, have expression scope (they die at the end of the expression they are in), and cannot be assigned to. This non-assignment rule makes sense, because assigning a value applies a side-effect to the object. Since r-values have expression scope, if we were to assign a value to an r-value, then the r-value would either go out of scope before we had a chance to use the assigned value in the next expression (which makes the assignment useless) or we’d have to use a variable with a side effect applied more than once in an expression (which by now you should know causes undefined behavior!).
+
+
+
+
+
+## `L-value references`
+
+> Prior to C++11, only one type of reference existed in C++, and so it was just called a “reference”. However, in C++11, it’s sometimes called an l-value reference. L-value references can only be initialized with modifiable l-values.
+
+
+![Image](/home/sumit/Documents/medley/resources/BkX9mbMeSS_HktW_MeSr.png)
+
+
+> L-value references to const objects can be initialized with l-values and r-values alike. However, those values can’t be modified.
+
+
+![Image](/home/sumit/Documents/medley/resources/BkX9mbMeSS_SJ3K_flSS.png)
+
+> L-value references to const objects are particularly useful because they allow us to pass any type of argument (l-value or r-value) into a function without making a copy of the argument.
+
+
+
+
+
+## `R-value references`
+
+> C++11 adds a new type of reference called an r-value reference. An r-value reference is a reference that is designed to be initialized with an r-value (only). While an l-value reference is created using a single ampersand, an r-value reference is created using a double ampersand:
+
+```c
+int x = 5;
+int &lref = x; // l-value reference initialized with l-value x
+int &&rref = 5; // r-value reference initialized with r-value 5
+```
+
+
+> R-values references cannot be initialized with l-values.
+
+
+![Image](/home/sumit/Documents/medley/resources/BkX9mbMeSS_BkiTFGxHH.png)
+
+
+> R-value references have two properties that are useful. First, r-value references extend the lifespan of the object they are initialized with to the lifespan of the r-value reference (l-value references to const objects can do this too). Second, non-const r-value references allow you to modify the r-value!
+
+```c
+#include <iostream>
+ 
+class Fraction
+{
+private:
+	int m_numerator;
+	int m_denominator;
+ 
+public:
+	Fraction(int numerator = 0, int denominator = 1) :
+		m_numerator(numerator), m_denominator(denominator)
+	{
+	}
+ 
+	friend std::ostream& operator<<(std::ostream& out, const Fraction &f1)
+	{
+		out << f1.m_numerator << "/" << f1.m_denominator;
+		return out;
+	}
+};
+ 
+int main()
+{
+	Fraction &&rref = Fraction(3, 5); // r-value reference to temporary Fraction
+	std::cout << rref << '\n';
+	
+    // This program prints:
+    // 3/5
+    
+	return 0;
+} // rref (and the temporary Fraction) goes out of scope here
+```
+
+> As an anonymous object, Fraction(3, 5) would normally go out of scope at the end of the expression in which it is defined. However, since we’re initializing an r-value reference with it, its duration is extended until the end of the block. We can then use that r-value reference to print the Fraction’s value.
+
+
+```c
+#include <iostream>
+ 
+int main()
+{
+    int &&rref = 5; // because we're initializing an r-value reference with a literal, a temporary with value 5 is created here
+    rref = 10;
+    std::cout << rref;
+
+    // This program prints: 
+    // 10
+    return 0;
+}
+```
+
+> While it may seem weird to initialize an r-value reference with a literal value and then be able to change that value, when initializing an r-value with a literal, a temporary is constructed from the literal so that the reference is referencing a temporary object, not a literal value.
+
+
+
+
+
+## `R-value references as function parameters`
+
+> R-value references are more often used as function parameters. This is most useful for function overloads when you want to have different behavior for l-value and r-value arguments.
+
+```c
+void fun(const int &lref) // l-value arguments will select this function
+{
+	std::cout << "l-value reference to const\n";
+}
+ 
+void fun(int &&rref) // r-value arguments will select this function
+{
+	std::cout << "r-value reference\n";
+}
+ 
+int main()
+{
+	int x = 5;
+	fun(x); // l-value argument calls l-value version of function
+	fun(5); // r-value argument calls r-value version of function
+
+    // This prints:
+    // l-value reference to const
+    // r-value reference
+	return 0;
+}
+```
+
+
+
+
+
+## `Returning an r-value reference`
+
+> You should almost never return an r-value reference, for the same reason you should almost never return an l-value reference. In most cases, you’ll end up returning a hanging reference when the referenced object goes out of scope at the end of the function.
+
