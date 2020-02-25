@@ -8,17 +8,22 @@
 class Something
 {
 private:
-    static int s_value; // declares the static member variable
+    static int s_value; // declares static member variable privately
+public:
+    static int t_value; // declares static member variable publicly
 };
  
 int Something::s_value = 1; // initializer, this is okay even though s_value is private since it's a definitionsection below)
- 
+int Something::t_value = 2;
+
 int main()
 {
     // note: we're not instantiating any objects of type Something
  
-    Something::s_value = 2;
+    Something::s_value = 2; // This is not okay as s_value is private
+    Something::t_value = 3; // This is okay 
     std::cout << Something::s_value << '\n';
+    std::cout << Something::t_value << '\n';
     return 0;
 }
 ```
